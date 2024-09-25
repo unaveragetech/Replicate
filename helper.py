@@ -1,5 +1,6 @@
 import subprocess
 import asyncio
+import tkinter as tk
 
 class Helper:
     def __init__(self, script_path, test_file, log_widget):
@@ -21,7 +22,7 @@ class Helper:
                 elif "# === End Editable Section ===" in line:
                     end_idx = i
             
-            if start_idx and end_idx:
+            if start_idx is not None and end_idx is not None:
                 await self.create_test_script_async(content, new_code, start_idx, end_idx)
                 result = await self.run_test_async()
                 if result:
@@ -63,12 +64,61 @@ class Helper:
             await self.log_to_gui("Changes applied successfully.")
 
     def suggest_new_code(self):
-        """Suggest new code to inject."""
-        new_code = """async def injected_function():
-    print("Injected code is running.")
-    await asyncio.sleep(1)
-await injected_function()"""
+        """Suggest new code to inject based on logical patterns."""
+        current_code = self.get_current_code()
+        logical_code = self.logical_suggestion(current_code)
+        
+        new_code = f"""
+# Auto-generated suggestion based on existing logic
+{logical_code}
+"""
         return new_code
+
+    def get_current_code(self):
+        """Retrieve the current code in the editable section."""
+        with open(self.script_path, 'r') as file:
+            content = file.readlines()
+
+        start_idx, end_idx = None, None
+        for i, line in enumerate(content):
+            if "# === Start Editable Section ===" in line:
+                start_idx = i
+            elif "# === End Editable Section ===" in line:
+                end_idx = i
+        
+        if start_idx is not None and end_idx is not None:
+            return ''.join(content[start_idx + 1:end_idx])
+        return ""
+
+    def logical_suggestion(self, current_code):
+        """Generate logical suggestions based on the current code."""
+        suggestions = []
+
+        # Analyze the current code for specific patterns
+        if "def " in current_code:
+            suggestions.append(
+                "def new_helper_function():\n    # TODO: Add logic to assist existing functions."
+            )
+            suggestions.append("# Consider calling new_helper_function() where appropriate.")
+
+        if "for " in current_code or "while " in current_code:
+            suggestions.append("# Suggest adding an exit condition or a break statement.")
+            suggestions.append("# Consider using list comprehensions for better readability.")
+
+        if "if " in current_code:
+            suggestions.append("# Suggest adding an else clause for handling alternative cases.")
+            suggestions.append("# Consider using 'elif' to reduce nesting if multiple conditions apply.")
+
+        if "try:" in current_code:
+            suggestions.append("# Ensure exception handling is in place for potential errors.")
+
+        if "class " in current_code:
+            suggestions.append("# Consider implementing __str__ and __repr__ methods for better debugging.")
+
+        if "def " in current_code and "test_" not in current_code:
+            suggestions.append("# Suggest adding unit tests for the defined functions.")
+
+        return "\n".join(suggestions)
 
     async def log_to_gui(self, message):
         """Log message in the GUI window."""
